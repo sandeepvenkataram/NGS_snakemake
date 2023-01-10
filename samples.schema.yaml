@@ -1,0 +1,16 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: an entry in the sample sheet
+properties:
+  sample:
+    type: string
+    description: sample name/identifier
+  fastq_suffix_1:
+    type: string
+    description: suffix for fastq for read 1
+  fastq_suffix_2:
+    type: string
+    description: suffix for fastq for read 2 (if such a file exists)
+
+required:
+  - sample
+  - fastq_suffix_1

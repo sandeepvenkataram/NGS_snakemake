@@ -1,0 +1,44 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: an entry in the sample sheet
+
+properties:
+  conda_env:
+    type: string
+  samples:
+    type: string
+  reference_genome_dir:
+    type: string
+  reference_genome_base:
+    type: string
+  reference_genome_fasta_suffix:  
+    type: string
+  fastq_dir:
+    type: string
+  mapped_genome_dir:
+    type: string
+  variant_dir:
+    type: string
+  trimmed_fastq_dir:
+    type: string
+  trimmomatic_clip:
+    type: string
+    description: string used to clip reads using trimmomatic
+  variant_filter_expression:
+    type: string
+    description: string used to filter variants using gatk VariantFiltration
+
+  
+
+required:
+  - conda_env
+  - samples
+  - reference_genome_dir
+  - reference_genome_base
+  - reference_genome_fasta_suffix
+  - fastq_dir
+  - mapped_genome_dir
+  - variant_dir
+  - trimmed_fastq_dir
+  - trimmomatic_clip
+  - variant_filter_expression
+  

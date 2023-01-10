@@ -1,0 +1,20 @@
+conda_env: "tf"
+
+samples: 'samples.tab'
+
+
+fastq_dir: "FASTQ_Input/"
+
+mapped_genome_dir: "Mapped/"
+
+variant_dir: "VCF/"
+
+reference_genome_dir: 'Reference_Genome/'
+reference_genome_base: 'saccharomyces_cerevisiae_R64-2-1_20150113_withBC'
+reference_genome_fasta_suffix: "fasta"
+repetitive_elements_bed: 'saccharomyces_cerevisiae_R64-2-1_20150113_withBC_repetitiveElements.merged.bed'
+
+trimmed_fastq_dir: "FASTQ_Trimmed/"
+trimmomatic_clip: 'HEADCROP:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 ILLUMINACLIP:/home/sandeep/anaconda3/envs/tf/share/trimmomatic-0.39-2/adapters/NexteraPE-PE.fa:2:30:10'
+
+variant_filter_expression: "QD < 10.0 || FS >20.0 || MQ < 20.0 || AN > 10 || AF<0.25 || QUAL < 100.0 || DP < 3"
