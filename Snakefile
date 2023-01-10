@@ -45,7 +45,7 @@ validate(samples, "samples.schema.yaml")
 
 
 ref_prefix = config["reference_genome_dir"] + config["reference_genome_base"]
-ref_suffixes = ["dict", "fasta.fai", "fasta.amb", "1.bt2"]
+ref_suffixes = ["dict", "fasta.fai", "1.bt2"]
 
 
 trimmomatic_mode = "PE"
@@ -93,11 +93,13 @@ rule all:
 
 rule index_reference:
     input:
-        ref_prefix + ".fasta",
+        fasta = ref_prefix + ".fasta",
+        bed_mask = config["reference_genome_dir"] + config["repetitive_elements_bed"]
     output:
         ref_prefix + ".dict",
         ref_prefix + ".fasta.fai",
-        ref_prefix + ".1.bt2"
+        ref_prefix + ".1.bt2",
+        config["reference_genome_dir"] + config["repetitive_elements_bed"] + ".idx"
     message:
         "Indexing Reference Genome"
     conda:
@@ -150,6 +152,7 @@ rule bowtie2_map:
     input:
         config["trimmed_fastq_dir"] + "{sample}.fastq.gz",
         ref_prefix + ".1.bt2",
+        ref_prefix + ".fasta.fai"
     output:
         samfile=config["mapped_genome_dir"] + "{sample}_bowtie2.sam",
         rg_out=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.bam",

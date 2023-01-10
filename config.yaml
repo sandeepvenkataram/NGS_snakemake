@@ -1,4 +1,4 @@
-conda_env: "tf"
+conda_env: "base"
 
 samples: 'samples.tab'
 
