@@ -1,4 +1,4 @@
-conda_env: "base"
+conda_env: "ngs"
 
 samples: 'samples.tab'
 

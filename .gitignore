@@ -1,0 +1,7 @@
+FASTQ_Input/
+.snakemake/
+FASTQ_Trimmed/
+FASTQC/
+logs/
+Mapped/
+Reference_Genome/

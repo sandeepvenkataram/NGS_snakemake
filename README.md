@@ -8,7 +8,7 @@ Jan 2023
 
 This pipeline starts with raw FASTQ files and generates a single VCF containing variants that pass quality filters.
 
-Example FASTQ data should be downloaded from NCBI SRA and stored in FASTQ_Input/
+Example FASTQ data should be downloaded from NCBI SRA and stored in FASTQ_Input/. I recommend using the fasterq-dump tool from the sra-toolkit available from NCBI.
 
     SRR15034727
     

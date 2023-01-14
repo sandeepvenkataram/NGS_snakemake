@@ -29,7 +29,8 @@
 
 import pandas as pd
 from snakemake.utils import validate
-
+from os import path
+import glob
 
 configfile: "config.yaml"
 
@@ -45,48 +46,49 @@ validate(samples, "samples.schema.yaml")
 
 
 ref_prefix = config["reference_genome_dir"] + config["reference_genome_base"]
-ref_suffixes = ["dict", "fasta.fai", "1.bt2"]
 
 
-trimmomatic_mode = "PE"
-if not "fastq_suffix_2" in samples.columns:
-    trimmomatic_mode = "SE"
+def num_files(wildcards):
+    return (len(get_fastq_files(wildcards)))
 
-fastq_file_dict = dict()
-trimmed_file_dict = dict()
-bowtie2_input_dict = dict()
-for sample in samples["sample"].tolist():
-    result = config["fastq_dir"] + sample + "." + samples.at[sample, "fastq_suffix_1"]
-    result_trimmed = config["trimmed_fastq_dir"] + sample + ".fastq.gz"
-    result_bowtie = "-1 " + result_trimmed
-    if trimmomatic_mode == "PE":
-        result += (
-            " "
-            + config["fastq_dir"]
-            + sample
-            + "."
-            + samples.at[sample, "fastq_suffix_2"]
-        )
+def get_fastq_files(wildcards):
+    return (glob.glob(config["fastq_dir"]+wildcards.sample+"*"))
 
-        result_trimmed += (
-            " " + config["trimmed_fastq_dir"] + sample + "_unpaired.fastq.gz"
-        )
-        result_trimmed += " " + config["trimmed_fastq_dir"] + sample + "_2.fastq.gz"
-        result_trimmed += (
-            " " + config["trimmed_fastq_dir"] + sample + "_unpaired_2.fastq.gz"
-        )
+def get_trimmomatic_mode(wildcards):
+    my_num_files = num_files(wildcards)
+    if my_num_files == 1:
+        return "SE"
+    return "PE"
 
-        result_bowtie += " -2 " + config["trimmed_fastq_dir"] + sample + "_2.fastq.gz"
+def get_trimmomatic_input(wildcards):
+    return(" ".join(get_fastq_files(wildcards)))
+
+def get_trimmomatic_output(wildcards):
+    my_files = get_fastq_files(wildcards)
+    if len(my_files)==1:
+        return (config["trimmed_fastq_dir"] + wildcards.sample + ".fastq.gz")
     else:
-        result_bowtie = "-U " + result_trimmed
-    fastq_file_dict[sample] = result
-    trimmed_file_dict[sample] = result_trimmed
-    bowtie2_input_dict[sample] = result_bowtie
+        return(" ".join([
+            config["trimmed_fastq_dir"] + wildcards.sample + ".fastq.gz",
+            config["trimmed_fastq_dir"] + wildcards.sample + "_unpaired.fastq.gz",
+            config["trimmed_fastq_dir"] + wildcards.sample + "_2.fastq.gz",
+            config["trimmed_fastq_dir"] + wildcards.sample + "_unpaired_2.fastq.gz"
+        ]))
+
+def get_bowtie_input(wildcards):
+    my_files = get_fastq_files(wildcards)
+    if len(my_files)==1:
+        return ("-U "+config["trimmed_fastq_dir"] + wildcards.sample + ".fastq.gz")
+    else:
+        return(" ".join([
+            "-1 "+config["trimmed_fastq_dir"] + wildcards.sample + ".fastq.gz",
+            "-2 " + config["trimmed_fastq_dir"] + wildcards.sample + "_2.fastq.gz"
+        ]))
 
 
 rule all:
     input:
-        expand("FASTQC/{sample}_fastqc.html", sample=sample_list),  #fastqc output
+        expand("FASTQC/{sample}_1_fastqc.html", sample=sample_list),  #fastqc output
         config["variant_dir"] + "all_clones_merged_forVEP.vcf"  #aggregate all VCF files
     default_target: True
 
@@ -114,11 +116,12 @@ rule index_reference:
 
 rule fastqc:
     input:
-        lambda wildcards: fastq_file_dict[wildcards.sample],
+        get_fastq_files
     output:
-        "FASTQC/{sample}_fastqc.html",
+        "FASTQC/{sample}_1_fastqc.html",
+        "FASTQC/{sample}_2_fastqc.html"
     message:
-        "Generating FASTQC for {sample}"
+        "Generating FASTQC for {wildcards.sample}"
     conda:
         config["conda_env"]
     log:
@@ -129,16 +132,16 @@ rule fastqc:
 
 rule trimmomatic:
     input:
-        config["fastq_dir"] + "{sample}." + samples.at[sample, "fastq_suffix_1"],
+        get_fastq_files
     output:
-        config["trimmed_fastq_dir"] + "{sample}.fastq.gz",
+        config["trimmed_fastq_dir"] + "{sample}.fastq.gz"
     params:
-        input_string=lambda wildcards: fastq_file_dict[wildcards.sample],
-        output_string=lambda wildcards: trimmed_file_dict[wildcards.sample],
-        trimmomatic_mode=trimmomatic_mode,
-        trimmomatic_clip=config["trimmomatic_clip"],
+        input_string = get_trimmomatic_input,
+        output_string = get_trimmomatic_output,
+        trimmomatic_mode = get_trimmomatic_mode,
+        trimmomatic_clip = config["trimmomatic_clip"]
     message:
-        "Trimming FASTQ files with Trimmomatic for {sample}"
+        "Trimming FASTQ files with Trimmomatic for {wildcards.sample}"
     conda:
         config["conda_env"]
     threads: 4
@@ -154,19 +157,16 @@ rule bowtie2_map:
         ref_prefix + ".1.bt2",
         ref_prefix + ".fasta.fai"
     output:
-        samfile=config["mapped_genome_dir"] + "{sample}_bowtie2.sam",
-        rg_out=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.bam",
-        mdbam=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
-        mdstats=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.stats",
-        bamidex=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai",
+        sam_file = config["mapped_genome_dir"] + "{sample}_bowtie2.sam",
+        rg_out = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.bam",
+        md_bam = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
+        md_stats = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.stats",
+        bam_idex = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai",
     message:
-        "Mapping FASTQ files with Bowtie2 for {sample}"
+        "Mapping FASTQ files with Bowtie2 for {wildcards.sample}"
     params:
-        ref_prefix=ref_prefix,
-        bowtie2_input=bowtie2_input_dict[sample],
-        rg_out=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.bam",
-        mdbam=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
-        mdstats=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.stats",
+        ref_prefix = ref_prefix,
+        bowtie2_input = get_bowtie_input
     conda:
         config["conda_env"]
     threads: 4
@@ -178,24 +178,24 @@ rule bowtie2_map:
 
 rule call_and_filter_variants:
     input:
-        bam=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
-        bambai=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai",
-        picardindex=ref_prefix + ".dict",
-        bed_mask=config["reference_genome_dir"] + config["repetitive_elements_bed"],
-        bed_index=config["reference_genome_dir"] + config["repetitive_elements_bed"] + ".idx",
-        ref_fasta=ref_prefix + "." + config["reference_genome_fasta_suffix"],
+        bam = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
+        bam_bai = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai",
+        picard_index = ref_prefix + ".dict",
+        bed_mask = config["reference_genome_dir"] + config["repetitive_elements_bed"],
+        bed_index = config["reference_genome_dir"] + config["repetitive_elements_bed"] + ".idx",
+        ref_fasta = ref_prefix + "." + config["reference_genome_fasta_suffix"],
     output:
-        bamout=config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.realigned.bam",
-        vcfrecodegz=config["variant_dir"] + "{sample}.recode.vcf.gz",
-        vcfrecodegztbi=config["variant_dir"] + "{sample}.recode.vcf.gz.tbi",
+        bam_out = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.realigned.bam",
+        vcf_recode_gz = config["variant_dir"] + "{sample}.recode.vcf.gz",
+        vcf_recode_gz_tbi = config["variant_dir"] + "{sample}.recode.vcf.gz.tbi",
     message:
-        "GATK HaplotypeCaller and Filtration for {sample}"
+        "GATK HaplotypeCaller and Filtration for {wildcards.sample}"
     conda:
         config["conda_env"]
     params:
-        prefix=config["variant_dir"] + "{sample}",
-        ref_fasta=ref_prefix + "." + config["reference_genome_fasta_suffix"],
-        filter_expression=config["variant_filter_expression"],
+        prefix = config["variant_dir"] + "{sample}",
+        ref_fasta = ref_prefix + "." + config["reference_genome_fasta_suffix"],
+        filter_expression = config["variant_filter_expression"],
     log:
         "logs/{sample}",
     script:
@@ -204,12 +204,12 @@ rule call_and_filter_variants:
 
 rule variant_merge:
     input:
-        vcfs=expand(
+        vcfs = expand(
             config["variant_dir"] + "{sample}.recode.vcf.gz", sample=sample_list
         ),
     output:
-        vcf=config["variant_dir"] + "all_clones_merged.vcf",
-        vep=config["variant_dir"] + "all_clones_merged_forVEP.vcf",
+        vcf = config["variant_dir"] + "all_clones_merged.vcf",
+        vep = config["variant_dir"] + "all_clones_merged_forVEP.vcf",
     message:
         "Merge all vcf"
     conda:
