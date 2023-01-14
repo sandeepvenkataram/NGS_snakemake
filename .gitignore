@@ -5,3 +5,4 @@ FASTQC/
 logs/
 Mapped/
 Reference_Genome/
+VCF/

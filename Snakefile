@@ -29,7 +29,6 @@
 
 import pandas as pd
 from snakemake.utils import validate
-from os import path
 import glob
 
 configfile: "config.yaml"
@@ -161,7 +160,7 @@ rule bowtie2_map:
         rg_out = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.bam",
         md_bam = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam",
         md_stats = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.stats",
-        bam_idex = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai",
+        bam_idex = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.bam.bai"
     message:
         "Mapping FASTQ files with Bowtie2 for {wildcards.sample}"
     params:
@@ -183,11 +182,11 @@ rule call_and_filter_variants:
         picard_index = ref_prefix + ".dict",
         bed_mask = config["reference_genome_dir"] + config["repetitive_elements_bed"],
         bed_index = config["reference_genome_dir"] + config["repetitive_elements_bed"] + ".idx",
-        ref_fasta = ref_prefix + "." + config["reference_genome_fasta_suffix"],
+        ref_fasta = ref_prefix + "." + config["reference_genome_fasta_suffix"]
     output:
         bam_out = config["mapped_genome_dir"] + "{sample}_bowtie2.sorted.dups.realigned.bam",
         vcf_recode_gz = config["variant_dir"] + "{sample}.recode.vcf.gz",
-        vcf_recode_gz_tbi = config["variant_dir"] + "{sample}.recode.vcf.gz.tbi",
+        vcf_recode_gz_tbi = config["variant_dir"] + "{sample}.recode.vcf.gz.tbi"
     message:
         "GATK HaplotypeCaller and Filtration for {wildcards.sample}"
     conda:
@@ -195,7 +194,7 @@ rule call_and_filter_variants:
     params:
         prefix = config["variant_dir"] + "{sample}",
         ref_fasta = ref_prefix + "." + config["reference_genome_fasta_suffix"],
-        filter_expression = config["variant_filter_expression"],
+        filter_expression = config["variant_filter_expression"]
     log:
         "logs/{sample}",
     script:
@@ -209,12 +208,12 @@ rule variant_merge:
         ),
     output:
         vcf = config["variant_dir"] + "all_clones_merged.vcf",
-        vep = config["variant_dir"] + "all_clones_merged_forVEP.vcf",
+        vep = config["variant_dir"] + "all_clones_merged_forVEP.vcf"
     message:
         "Merge all vcf"
     conda:
         config["conda_env"]
     log:
-        "logs/variant",
+        "logs/variant"
     script:
         "scripts/variant_merge.sh"
